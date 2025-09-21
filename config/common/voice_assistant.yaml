@@ -38,6 +38,7 @@ micro_wake_word:
   id: mww
   models:
     - model: hey_mycroft
+      probability_cutoff: 0.75
       id: https://github.com/esphome/micro-wake-word-models/blob/05b65922cc433c9df13e98e32a7fe520758c837e/models/v2/hey_mycroft.json
     - model: okay_nabu
       id: okay_nabu    
@@ -45,6 +46,8 @@ micro_wake_word:
       id: stop
       internal: true
   vad:
+    probability_cutoff: 0.7
+    sliding_window_size: 10
   microphone:
     microphone: sat1_mics
     channels: 1
