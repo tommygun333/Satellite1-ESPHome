@@ -1,0 +1,107 @@
+# Include this file from config/common/voice_assistant.yaml using:
+#
+# packages:
+#   mww_runtime_controls: !include ./mww_runtime_controls.yaml
+#
+# Requirements in your existing micro_wake_word block:
+# - Top-level component id: mww
+# - Active wake word model id: ww_model (assign this to whichever model is active)
+
+external_components:
+  - source: local
+    components: [micro_wake_word]
+
+# Persisted values (used both on_value and on_boot)
+globals:
+  - id: g_wake_prob
+    type: float
+    restore_value: yes
+    initial_value: "0.75"
+  - id: g_wake_win
+    type: int
+    restore_value: yes
+    initial_value: "10"
+  - id: g_vad_prob
+    type: float
+    restore_value: yes
+    initial_value: "0.70"
+  - id: g_vad_win
+    type: int
+    restore_value: yes
+    initial_value: "20"
+
+number:
+  - platform: template
+    name: "Wake word probability cutoff"
+    id: n_wake_prob
+    min_value: 0.10
+    max_value: 1.00
+    step: 0.01
+    optimistic: true
+    restore_value: true
+    initial_value: 0.75
+    on_value:
+      then:
+        - lambda: |-
+            id(g_wake_prob) = x;
+            id(ww_model).set_probability_cutoff(x);
+
+  - platform: template
+    name: "Wake word sliding window"
+    id: n_wake_win
+    min_value: 1
+    max_value: 50
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 10
+    on_value:
+      then:
+        - lambda: |-
+            id(g_wake_win) = (int)x;
+            id(ww_model).set_sliding_window_size((int)x);
+
+  - platform: template
+    name: "VAD probability cutoff"
+    id: n_vad_prob
+    min_value: 0.10
+    max_value: 1.00
+    step: 0.01
+    optimistic: true
+    restore_value: true
+    initial_value: 0.70
+    on_value:
+      then:
+        - lambda: |-
+            id(g_vad_prob) = x;
+            id(mww).set_vad_probability_cutoff(x);
+
+  - platform: template
+    name: "VAD sliding window"
+    id: n_vad_win
+    min_value: 1
+    max_value: 50
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    on_value:
+      then:
+        - lambda: |-
+            id(g_vad_win) = (int)x;
+            id(mww).set_vad_sliding_window_size((int)x);
+
+button:
+  - platform: restart
+    name: "Apply wake/VAD settings (restart)"
+
+esphome:
+  on_boot:
+    priority: -10
+    then:
+      - lambda: |-
+          // Apply persisted values at startup
+          id(ww_model).set_probability_cutoff(id(g_wake_prob));
+          id(ww_model).set_sliding_window_size(id(g_wake_win));
+          id(mww).set_vad_probability_cutoff(id(g_vad_prob));
+          id(mww).set_vad_sliding_window_size(id(g_vad_win));
