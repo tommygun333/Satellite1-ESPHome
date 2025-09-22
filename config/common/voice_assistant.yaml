@@ -15,9 +15,6 @@ substitutions:
   # The voice assistant encountered an error
   voice_assist_error_phase_id: '11'
 
-packages:
-  mww_runtime_controls: !include ./mww_runtime_controls.yaml
-
 globals:
   # Global variable tracking the phase of the voice assistant (defined above). Initialized to not_ready
   - id: voice_assistant_phase
