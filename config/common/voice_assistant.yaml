@@ -37,6 +37,10 @@ microphone:
 micro_wake_word:
   id: mww
   models:
+    - model: hey_jarvis
+      id: hey_jarvis
+      probability_cutoff: 0.80
+      sliding_window_size: 20
     - model: hey_mycroft
       id: hey_mycroft_model
       probability_cutoff: 0.99
