@@ -62,6 +62,36 @@ class MicroWakeWord : public Component {
   // Since these are pointers to the WakeWordModel objects, the voice assistant component can enable or disable them
   std::vector<WakeWordModel *> get_wake_words();
 
+  // Runtime-adjustable thresholds (top-level setters callable from YAML lambdas)
+  // Wake word thresholds (applied to all wake-word models; only one active model is expected)
+  void set_wake_word_probability_cutoff(float cutoff) {
+    if (cutoff < 0.0f) cutoff = 0.0f;
+    if (cutoff > 1.0f) cutoff = 1.0f;
+    this->ww_probability_cutoff_ = cutoff;
+  }
+  void set_wake_word_sliding_window_size(size_t size) {
+    if (size < 1) size = 1;
+    if (size > 100) size = 100;  // safety cap
+    this->ww_sliding_window_size_ = size;
+    // Reset counters so new window takes effect cleanly
+    for (auto &v : this->ww_hits_) v = 0;
+  }
+
+#ifdef USE_MICRO_WAKE_WORD_VAD
+  // VAD thresholds
+  void set_vad_probability_cutoff(float cutoff) {
+    if (cutoff < 0.0f) cutoff = 0.0f;
+    if (cutoff > 1.0f) cutoff = 1.0f;
+    this->vad_probability_cutoff_ = cutoff;
+  }
+  void set_vad_sliding_window_size(size_t size) {
+    if (size < 1) size = 1;
+    if (size > 100) size = 100;  // safety cap
+    this->vad_sliding_window_size_ = size;
+    this->vad_hits_ = 0;
+  }
+#endif
+
  protected:
   microphone::MicrophoneSource *microphone_source_{nullptr};
   Trigger<std::string> *wake_word_detected_trigger_ = new Trigger<std::string>();
@@ -73,7 +103,17 @@ class MicroWakeWord : public Component {
 #ifdef USE_MICRO_WAKE_WORD_VAD
   std::unique_ptr<VADModel> vad_model_;
   bool vad_state_{false};
+  // Runtime VAD gating parameters and state
+  float vad_probability_cutoff_{0.70f};
+  size_t vad_sliding_window_size_{20};
+  size_t vad_hits_{0};
 #endif
+
+  // Runtime WW gating parameters and state
+  float ww_probability_cutoff_{0.75f};
+  size_t ww_sliding_window_size_{10};
+  // Per-model consecutive-hit counters (aligned with wake_word_models_)
+  std::vector<size_t> ww_hits_;
 
   bool pending_start_{false};
   bool pending_stop_{false};
