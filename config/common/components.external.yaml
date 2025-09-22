@@ -3,7 +3,7 @@ substitutions:
 external_components:
   - source:
       type: local
-      url: C:/Users/Tommy/Downloads/Satelite1/esphome/components
+      path: C:/Users/Tommy/Downloads/Satelite1/esphome/components
       
     components:
         - audio 
