@@ -14,7 +14,7 @@ esphome:
 packages:
   FutureProofHomes.Satellite1: 
     url: https://github.com/tommygun333/Satellite1-ESPHome.git
-    ref: 4fd634ac35e5390c7ae44dc30a1eac1015586ad9
+    ref: runtimemww
     refresh: 1s  
     files: 
     # Main config files, don't remove
