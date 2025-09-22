@@ -1,11 +1,10 @@
 substitutions:
-  ext_comp_repo_ref: develop
-
+  
 external_components:
   - source:
-      type: git
-      url: https://github.com/tommygun333/Satellite1-ESPHome.git
-      ref: ${ext_comp_repo_ref}
+      type: local
+      url: C:/Users/Tommy/Downloads/Satelite1/esphome/components
+      
     components:
         - audio 
         - fusb302b
