@@ -217,12 +217,18 @@ std::vector<WakeWordModel *> MicroWakeWord::get_wake_words() {
   return external_wake_word_models;
 }
 
-void MicroWakeWord::add_wake_word_model(WakeWordModel *model) { this->wake_word_models_.push_back(model); }
+void MicroWakeWord::add_wake_word_model(WakeWordModel *model) {
+  this->wake_word_models_.push_back(model);
+  // Keep per-model consecutive-hit counters aligned
+  this->ww_hits_.push_back(0);
+}
 
 #ifdef USE_MICRO_WAKE_WORD_VAD
 void MicroWakeWord::add_vad_model(const uint8_t *model_start, uint8_t probability_cutoff, size_t sliding_window_size,
                                   size_t tensor_arena_size) {
   this->vad_model_ = make_unique<VADModel>(model_start, probability_cutoff, sliding_window_size, tensor_arena_size);
+  // Reset runtime gating state so our thresholds apply cleanly
+  this->vad_hits_ = 0;
 }
 #endif
 
@@ -306,7 +312,7 @@ void MicroWakeWord::loop() {
         }
 
         xTaskCreatePinnedToCore(MicroWakeWord::inference_task, "mww", INFERENCE_TASK_STACK_SIZE, (void *) this,
-                    INFERENCE_TASK_PRIORITY, &this->inference_task_handle_, 1);
+                                INFERENCE_TASK_PRIORITY, &this->inference_task_handle_, 1);
 
         if (this->inference_task_handle_ == nullptr) {
           FrontendFreeStateContents(&this->frontend_state_);  // Deallocate frontend state
@@ -415,18 +421,44 @@ size_t MicroWakeWord::generate_features_(int16_t *audio_buffer, size_t samples_a
 
 void MicroWakeWord::process_probabilities_() {
 #ifdef USE_MICRO_WAKE_WORD_VAD
+  // Evaluate VAD with runtime-adjustable gating
   DetectionEvent vad_state = this->vad_model_->determine_detected();
+  // Convert quantized average probability to 0.0-1.0
+  const float vad_avg = static_cast<float>(vad_state.average_probability) / 255.0f;
 
-  this->vad_state_ = vad_state.detected;  // atomic write, so thread safe
+  if (vad_avg >= this->vad_probability_cutoff_) {
+    if (this->vad_hits_ < this->vad_sliding_window_size_)
+      this->vad_hits_++;
+  } else {
+    this->vad_hits_ = 0;
+  }
+  const bool vad_ok = (this->vad_hits_ >= this->vad_sliding_window_size_);
+  this->vad_state_ = vad_ok;  // atomic write, so thread safe
 #endif
 
-  for (auto &model : this->wake_word_models_) {
+  // Iterate models with index so we can use per-model counters
+  for (size_t i = 0; i < this->wake_word_models_.size(); ++i) {
+    auto &model = this->wake_word_models_[i];
+
     if (model->get_unprocessed_probability_status()) {
-      // Only detect wake words if there is a new probability since the last check
+      // Only proceed if there is a new probability since the last check
       DetectionEvent wake_word_state = model->determine_detected();
-      if (wake_word_state.detected) {
+
+      // Convert quantized average probability to 0.0-1.0
+      const float ww_avg = static_cast<float>(wake_word_state.average_probability) / 255.0f;
+
+      if (ww_avg >= this->ww_probability_cutoff_) {
+        if (this->ww_hits_[i] < this->ww_sliding_window_size_)
+          this->ww_hits_[i]++;
+      } else {
+        this->ww_hits_[i] = 0;
+      }
+
+      const bool ww_ok = (this->ww_hits_[i] >= this->ww_sliding_window_size_);
+
+      if (ww_ok) {
 #ifdef USE_MICRO_WAKE_WORD_VAD
-        if (vad_state.detected) {
+        if (vad_ok) {
 #endif
           xQueueSend(this->detection_queue_, &wake_word_state, portMAX_DELAY);
           model->reset_probabilities();
