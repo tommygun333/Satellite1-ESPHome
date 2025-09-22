@@ -1,0 +1,93 @@
+# Template patch: add runtime setters to the local micro_wake_word copy.
+# NOTE: Class and member names vary slightly by ESPHome version. Use the anchors below to locate the right spots.
+
+--- a/components/micro_wake_word/micro_wake_word.h
++++ b/components/micro_wake_word/micro_wake_word.h
+@@
+ namespace esphome {
+ namespace micro_wake_word {
+
+ // Anchor: find the class representing the top-level component (often MicroWakeWord : public Component, public MicrophoneListener)
+-class MicroWakeWord : public Component /* ... */ {
++class MicroWakeWord : public Component /* ... */ {
+  public:
+@@
+     // Existing public methods...
+@@
++    // Runtime VAD setters (added)
++    void set_vad_probability_cutoff(float cutoff) {
++      this->vad_probability_cutoff_ = cutoff;
++      // If your version caches thresholds inside a VAD engine object, refresh it here.
++      // Example (pseudocode):
++      // if (this->vad_engine_ != nullptr) this->vad_engine_->set_probability_cutoff(cutoff);
++    }
++
++    void set_vad_sliding_window_size(int size) {
++      this->vad_sliding_window_size_ = size;
++      // If window sizes are cached in the engine, update/reinit as needed.
++      // Example (pseudocode):
++      // if (this->vad_engine_ != nullptr) this->vad_engine_->set_sliding_window_size(size);
++    }
+@@
+  protected:
+@@
+     // Anchor: find existing members for VAD threshold/window or add them if missing.
+-    // float vad_probability_cutoff_;
+-    // int vad_sliding_window_size_;
++    float vad_probability_cutoff_{0.70f};
++    int vad_sliding_window_size_{20};
+@@
+ };
+
+ // Anchor: find the class representing each loaded model (wake word models)
+-// class <ModelClassName> { ... }
++// The following addition assumes there is a class responsible for per-model parameters.
++// In some ESPHome versions, it may be named MicroWakeWordModel or similar.
++class MicroWakeWordModel /* ... */ {
++ public:
++   // Existing public methods...
++
++   // Runtime wake word setters (added)
++   void set_probability_cutoff(float cutoff) {
++     this->probability_cutoff_ = cutoff;
++     // If the detection pipeline caches this threshold, refresh it here.
++   }
++   void set_sliding_window_size(int size) {
++     this->sliding_window_size_ = size;
++     // If sliding window impacts an internal buffer or filter, update/reinit here.
++   }
++
++ protected:
++   float probability_cutoff_{0.75f};
++   int sliding_window_size_{10};
++};
+
+ }  // namespace micro_wake_word
+ }  // namespace esphome
+
+--- a/components/micro_wake_word/micro_wake_word.cpp
++++ b/components/micro_wake_word/micro_wake_word.cpp
+@@
+ namespace esphome {
+ namespace micro_wake_word {
+@@
+ // Anchor: ensure the top-level component uses the members in the runtime loop
+ // For VAD decision-making, reference this->vad_probability_cutoff_ and this->vad_sliding_window_size_
+ // For model decision-making, reference model->probability_cutoff_ and model->sliding_window_size_
+ //
+ // Example (pseudocode):
+ //
+ // bool MicroWakeWord::process_frame_(...) {
+ //   // VAD:
+ //   float vad_prob = this->vad_engine_->compute(...);
+ //   bool vad_active = vad_prob >= this->vad_probability_cutoff_;
+ //   // ... also use this->vad_sliding_window_size_ if VAD uses temporal smoothing
+ //
+ //   // Wake word:
+ //   float ww_prob = model->score(...);
+ //   bool ww_hit = ww_prob >= model->probability_cutoff_;
+ //   // ... consider model->sliding_window_size_ for temporal aggregation
+ // }
+@@
+ }  // namespace micro_wake_word
+ }  // namespace esphhome
