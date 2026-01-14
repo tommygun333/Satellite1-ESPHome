@@ -39,8 +39,6 @@ micro_wake_word:
   models:
     - model: hey_jarvis
       id: hey_jarvis
-    - model: okay_nabu
-      id: okay_nabu   
     - model: hey_mycroft
       id: hey_mycroft_model
       probability_cutoff: 0.96
