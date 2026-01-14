@@ -40,7 +40,9 @@ micro_wake_word:
     - model: hey_jarvis
       id: hey_jarvis
     - model: okay_nabu
-      id: okay_nabu    
+      id: okay_nabu   
+    - model: hey_mycroft
+      id: hey_mycroft_model
     - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
       id: stop
       internal: true
