@@ -45,7 +45,7 @@ micro_wake_word:
       id: hey_mycroft_model
       probability_cutoff: 0.96
       sliding_window_size: 6
-    - model: https://github.com/TaterTotterson/microWakeWords/blob/main/microWakeWords/hey_dobby.json
+    - model: https://github.com/TaterTotterson/microWakeWords/raw/main/microWakeWords/hey_dobby.json
       id: hey_dobby
     - model: https://github.com/kahrendt/microWakeWord/releases/download/stop/stop.json
       id: stop
